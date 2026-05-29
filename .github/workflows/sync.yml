@@ -1,0 +1,40 @@
+name: Sync ygkkk/argosbx to GHCR
+
+on:
+  workflow_dispatch:  # 手动触发
+  # schedule:         # 可选：定时同步
+  #   - cron: '0 3 * * *'
+
+env:
+  SOURCE_IMAGE: ygkkk/argosbx
+  TARGET_NAME: redp-img
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # 允许推送包到 GHCR
+
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # 使用自动令牌
+
+      - name: Pull source image
+        run: docker pull ${{ env.SOURCE_IMAGE }}
+
+      - name: Retag for GHCR
+        run: |
+          # 注意：镜像名必须全小写
+          TARGET_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ env.TARGET_NAME }}:latest"
+          docker tag ${{ env.SOURCE_IMAGE }} $TARGET_IMAGE
+          echo "New image: $TARGET_IMAGE"
+
+      - name: Push to GHCR
+        run: |
+          TARGET_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ env.TARGET_NAME }}:latest"
+          docker push $TARGET_IMAGE
